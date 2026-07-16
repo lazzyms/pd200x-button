@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A reversible macOS menu bar controller for the Maono PD200X mute button.">
+    <title>PD200X Button for macOS</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #59657a;
+        --blue: #1769ff;
+        --blue-dark: #0c46bd;
+        --paper: #f4f7fb;
+        --card: rgba(255, 255, 255, 0.82);
+        --line: rgba(23, 32, 51, 0.12);
+        --shadow: 0 24px 70px rgba(24, 46, 86, 0.16);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 85% 8%, rgba(23, 105, 255, 0.18), transparent 34rem),
+          radial-gradient(circle at 10% 50%, rgba(86, 222, 190, 0.13), transparent 28rem),
+          var(--paper);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      a { color: inherit; }
+
+      .shell {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 28px 0;
+      }
+
+      .brand {
+        display: flex;
+        gap: 11px;
+        align-items: center;
+        font-weight: 740;
+        letter-spacing: -0.02em;
+      }
+
+      .mic-dot {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 9px;
+        color: white;
+        background: linear-gradient(140deg, #3782ff, #0d4fcf);
+        box-shadow: 0 7px 18px rgba(23, 105, 255, 0.28);
+      }
+
+      .nav-link {
+        text-decoration: none;
+        color: var(--muted);
+        font-weight: 620;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 72px;
+        align-items: center;
+        padding: 84px 0 112px;
+      }
+
+      .eyebrow {
+        color: var(--blue-dark);
+        font-size: 0.8rem;
+        font-weight: 760;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 700px;
+        margin: 16px 0 22px;
+        font-size: clamp(3.2rem, 7vw, 6.4rem);
+        line-height: 0.95;
+        letter-spacing: -0.065em;
+      }
+
+      .lead {
+        max-width: 630px;
+        margin: 0;
+        color: var(--muted);
+        font-size: clamp(1.1rem, 2vw, 1.35rem);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 20px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: white;
+        text-decoration: none;
+        font-weight: 680;
+        box-shadow: 0 8px 24px rgba(24, 46, 86, 0.07);
+      }
+
+      .button.primary {
+        color: white;
+        border-color: transparent;
+        background: var(--blue);
+      }
+
+      .menu-demo {
+        position: relative;
+        width: min(100%, 430px);
+        margin-left: auto;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.36);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px);
+      }
+
+      .menu-bar {
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 18px;
+        color: white;
+        border-radius: 20px 20px 8px 8px;
+        background: linear-gradient(135deg, #51647f, #172033);
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .menu {
+        margin: 10px 0 0 auto;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.96);
+      }
+
+      .menu-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        font-size: 0.92rem;
+      }
+
+      .menu-row.active { color: white; background: var(--blue); }
+      .menu-row.subtle { color: var(--muted); }
+      .divider { height: 1px; margin: 7px 0; background: var(--line); }
+
+      .section { padding: 96px 0; }
+      .section h2 {
+        max-width: 760px;
+        margin: 0 0 48px;
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 1.02;
+        letter-spacing: -0.045em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .card {
+        min-height: 230px;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--card);
+        box-shadow: 0 12px 34px rgba(24, 46, 86, 0.07);
+        backdrop-filter: blur(18px);
+      }
+
+      .number {
+        color: var(--blue);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      .card h3 { margin: 50px 0 8px; font-size: 1.35rem; }
+      .card p { margin: 0; color: var(--muted); }
+
+      .safety {
+        display: grid;
+        grid-template-columns: 0.75fr 1.25fr;
+        gap: 54px;
+        align-items: start;
+        margin-bottom: 90px;
+        padding: 48px;
+        color: white;
+        border-radius: 30px;
+        background: #172033;
+        box-shadow: var(--shadow);
+      }
+
+      .safety h2 { margin: 0; font-size: 2.3rem; letter-spacing: -0.04em; }
+      .safety p { margin: 0; color: #c7d0df; font-size: 1.08rem; }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 32px 0 46px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      @media (max-width: 800px) {
+        .hero { grid-template-columns: 1fr; gap: 52px; padding-top: 52px; }
+        .menu-demo { margin: 0; }
+        .grid { grid-template-columns: 1fr; }
+        .safety { grid-template-columns: 1fr; padding: 34px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <nav>
+        <div class="brand"><span class="mic-dot">M</span> PD200X Button</div>
+        <a class="nav-link" href="https://github.com/lazzyms/pd200x-button">View source</a>
+      </nav>
+
+      <main>
+        <section class="hero">
+          <div>
+            <div class="eyebrow">A tiny macOS menu bar utility</div>
+            <h1>One mic button. Your dictation workflow.</h1>
+            <p class="lead">Start with one press. Stop and submit with the next. Switch to Meeting mode whenever you want the original mute button back.</p>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/lazzyms/pd200x-button#install">Install from source</a>
+              <a class="button" href="https://github.com/lazzyms/pd200x-button#restore-the-original-button">Read the rollback steps</a>
+            </div>
+          </div>
+
+          <div class="menu-demo" aria-label="Illustration of the menu bar app">
+            <div class="menu-bar">Dictate</div>
+            <div class="menu">
+              <div class="menu-row"><strong>PD200X Button</strong></div>
+              <div class="menu-row subtle"><span>Current</span><span>Dictation</span></div>
+              <div class="menu-row subtle"><span>Target</span><span>Handy · ready</span></div>
+              <div class="divider"></div>
+              <div class="menu-row active"><span>✓ Dictation Mode</span><span>⌘D</span></div>
+              <div class="menu-row"><span>Meeting Mode</span><span>⌘M</span></div>
+              <div class="divider"></div>
+              <div class="menu-row"><span>Settings…</span><span>⌘,</span></div>
+              <div class="menu-row"><span>✓ Start at Login</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="eyebrow">Configure it once</div>
+          <h2>Three targets, one simple physical gesture.</h2>
+          <div class="grid">
+            <article class="card">
+              <div class="number">01</div>
+              <h3>Handy</h3>
+              <p>Uses Handy’s supported remote control to start, stop, and cancel transcription.</p>
+            </article>
+            <article class="card">
+              <div class="number">02</div>
+              <h3>macOS Dictation</h3>
+              <p>Sends the same double-modifier shortcut selected in your macOS Keyboard settings.</p>
+            </article>
+            <article class="card">
+              <div class="number">03</div>
+              <h3>Custom shortcut</h3>
+              <p>Define separate start and stop shortcuts for any app, then optionally send Enter.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="safety">
+          <h2>Reversible by design.</h2>
+          <p>Meeting mode stops the hardware helper completely. The PD200X firmware immediately owns the button again. The uninstaller removes the app, the login agent, and its preferences, while byte-for-byte guards prevent unsupported commands from reaching the microphone.</p>
+        </section>
+      </main>
+
+      <footer>
+        <span>Built for the Maono PD200X on macOS.</span>
+        <a href="https://github.com/lazzyms/pd200x-button">GitHub repository</a>
+      </footer>
+    </div>
+  </body>
+</html>

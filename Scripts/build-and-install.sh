@@ -9,6 +9,17 @@ launch_agent="$HOME/Library/LaunchAgents/com.maulik.pd200x-button.plist"
 launch_domain="gui/$(id -u)"
 menu_executable="$app_path/Contents/MacOS/PD200XButtonMenu"
 
+signing_identity="${PD200X_SIGNING_IDENTITY:-}"
+if [[ -z "$signing_identity" ]]; then
+    signing_identity="$(
+        security find-identity -v -p codesigning 2>/dev/null \
+            | awk -F '"' '/Apple Development:/ { print $2; exit }'
+    )"
+fi
+if [[ -z "$signing_identity" ]]; then
+    signing_identity="-"
+fi
+
 cd "$root_dir"
 swift test
 swift build -c release
@@ -32,7 +43,14 @@ cp "$root_dir/Packaging/pd200x-button-owned" "$marker_path"
 cp "$root_dir/.build/release/PD200XButtonMenu" "$app_path/Contents/MacOS/PD200XButtonMenu"
 cp "$root_dir/.build/release/pd200x-button-probe" "$app_path/Contents/MacOS/pd200x-button-helper"
 chmod 755 "$app_path/Contents/MacOS/PD200XButtonMenu" "$app_path/Contents/MacOS/pd200x-button-helper"
-codesign --force --deep --sign - "$app_path"
+codesign --force --deep --timestamp=none --sign "$signing_identity" "$app_path"
+
+if [[ "$signing_identity" == "-" ]]; then
+    print -u2 "Warning: no stable signing identity was found."
+    print -u2 "Accessibility permission may need to be granted again after updates."
+else
+    print "Signed with: $signing_identity"
+fi
 
 mkdir -p "$HOME/Library/LaunchAgents"
 "$menu_executable" --install-login-agent

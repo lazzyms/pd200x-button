@@ -51,7 +51,7 @@ cd pd200x-button
 ./Scripts/build-and-install.sh
 ```
 
-The script runs the test suite, creates a release build, installs `PD200X Button.app` in your user Applications folder, signs it locally, and starts its login agent.
+The script runs the test suite, creates a release build, installs `PD200X Button.app` in your user Applications folder, signs it locally, and starts its login agent. If an Apple Development signing identity is available in Keychain, the installer uses it so Accessibility permission survives rebuilds. Otherwise it uses ad hoc signing and warns that permission may need to be granted again after updates. Set `PD200X_SIGNING_IDENTITY` to choose a specific identity.
 
 The menu bar title shows `Dictate` or `Meeting`. Open the menu, choose Settings, and select Handy, macOS Dictation, or Custom Shortcut. If Enter submission or keyboard shortcuts are enabled, use Request Access once and approve the macOS prompt.
 

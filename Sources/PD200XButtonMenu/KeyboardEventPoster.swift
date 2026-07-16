@@ -1,3 +1,4 @@
+import ApplicationServices
 import Carbon.HIToolbox
 import CoreGraphics
 import Foundation
@@ -22,12 +23,15 @@ enum KeyboardEventError: Error, LocalizedError {
 
 final class KeyboardEventPoster {
     static var hasPermission: Bool {
-        CGPreflightPostEventAccess()
+        AXIsProcessTrusted()
     }
 
     @discardableResult
     static func requestPermission() -> Bool {
-        CGRequestPostEventAccess()
+        let options = [
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true,
+        ] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
     }
 
     func post(_ shortcut: KeyboardShortcut) throws {

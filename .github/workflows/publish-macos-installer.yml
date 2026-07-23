@@ -2,6 +2,8 @@ name: Publish macOS installer
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -27,13 +29,21 @@ jobs:
           swift test
           swift build -c release
 
+          # Compute a pkgbuild-compatible version string.
+          # For tag pushes use the semver portion (e.g. v0.1.0 → 0.1.0).
+          # For branch/manual runs use a safe dotted-numeric dev version.
+          if [[ "$GITHUB_REF" == "refs/tags/"* ]]; then
+            PKG_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            PKG_VERSION="0.0.${GITHUB_RUN_NUMBER:-0}"
+          fi
+
           APP_BUNDLE="PD200X Button.app"
           STAGING_DIR="$RUNNER_TEMP/staging"
           BUILD_DIR="$RUNNER_TEMP/build"
-          PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-${GITHUB_REF_NAME}.pkg"
           LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
 
-          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$PKG_PATH"
+          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$LATEST_PKG_PATH"
           mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
 
           cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
@@ -51,13 +61,10 @@ jobs:
           pkgbuild \
             --root "$STAGING_DIR" \
             --identifier com.maulik.pd200x-button \
-            --version "${GITHUB_REF_NAME#v}" \
+            --version "$PKG_VERSION" \
             --install-location / \
-            "$PKG_PATH"
+            "$LATEST_PKG_PATH"
 
-          # Copy with a stable "latest" filename for use as the release asset.
-          cp "$PKG_PATH" "$LATEST_PKG_PATH"
-          shasum -a 256 "$PKG_PATH" > "$PKG_PATH.sha256"
           shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
 
       - name: Upload installer as release asset
@@ -87,7 +94,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          PKG_SOURCE="$RUNNER_TEMP/pd200x-button-macos-${GITHUB_REF_NAME}.pkg"
+          PKG_SOURCE="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
           SHA_SOURCE="$PKG_SOURCE.sha256"
           TARGET_DIR="site/docs/downloads"
           TARGET_PKG="$TARGET_DIR/pd200x-button-macos-latest.pkg"

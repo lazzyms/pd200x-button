@@ -323,7 +323,7 @@
                 </div>
                 <button class="copy-button" type="button" data-copy-target="install-command" aria-label="Copy Homebrew install command to clipboard">Copy</button>
               </div>
-              <pre class="command"><code id="install-command"></code></pre>
+              <pre class="command"><code id="install-command" aria-label="Homebrew install command"></code></pre>
               <p class="copy-status" data-copy-status aria-live="polite"></p>
               <p class="command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
             </section>
@@ -399,24 +399,24 @@
           selection?.addRange(range);
         }
 
-        if (!copied) {
+        if (copied) {
           if (status) {
-            status.textContent = "Clipboard copy is unavailable here. The command is selected so you can copy it manually.";
+            status.textContent = "Command copied to your clipboard.";
           }
-          button.textContent = "Copy failed";
+          const previousLabel = button.textContent;
+          button.textContent = "Copied";
           window.setTimeout(() => {
-            button.textContent = "Copy";
+            button.textContent = previousLabel;
           }, 1500);
           return;
         }
 
         if (status) {
-          status.textContent = "Command copied to your clipboard.";
+          status.textContent = "Clipboard copy is unavailable here. The command is selected so you can copy it manually.";
         }
-        const previousLabel = button.textContent;
-        button.textContent = "Copied";
+        button.textContent = "Copy failed";
         window.setTimeout(() => {
-          button.textContent = previousLabel;
+          button.textContent = "Copy";
         }, 1500);
       }
 

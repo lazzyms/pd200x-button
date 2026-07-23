@@ -14,14 +14,12 @@ var packageTargets: [Target] = [
     ),
 ]
 
-#if canImport(XCTest)
 packageTargets.append(
     .testTarget(
         name: "PD200XButtonProbeTests",
         dependencies: ["PD200XButtonProbe", "PD200XTarget"]
     )
 )
-#endif
 
 let package = Package(
     name: "PD200XButton",

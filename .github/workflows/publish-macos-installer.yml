@@ -32,10 +32,10 @@ jobs:
           # Compute a pkgbuild-compatible version string.
           # For tag pushes use the semver portion (e.g. v0.1.0 → 0.1.0).
           # For branch/manual runs use a safe dotted-numeric dev version.
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == "refs/tags/"* ]]; then
             PKG_VERSION="${GITHUB_REF_NAME#v}"
           else
-            PKG_VERSION="0.0.${GITHUB_RUN_NUMBER}"
+            PKG_VERSION="0.0.${GITHUB_RUN_NUMBER:-0}"
           fi
 
           APP_BUNDLE="PD200X Button.app"

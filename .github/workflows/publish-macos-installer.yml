@@ -21,8 +21,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Import Developer ID certificates
+        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        shell: bash
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
       - name: Build app and package installer
         shell: bash
+        env:
+          APP_SIGN_IDENTITY: ${{ secrets.APP_SIGN_IDENTITY }}
+          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
         run: |
           set -euo pipefail
 
@@ -41,9 +68,10 @@ jobs:
           APP_BUNDLE="PD200X Button.app"
           STAGING_DIR="$RUNNER_TEMP/staging"
           BUILD_DIR="$RUNNER_TEMP/build"
+          UNSIGNED_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest-unsigned.pkg"
           LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
 
-          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$LATEST_PKG_PATH"
+          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$UNSIGNED_PKG_PATH" "$LATEST_PKG_PATH"
           mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
 
           cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
@@ -51,9 +79,25 @@ jobs:
           cp .build/release/PD200XButtonMenu "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
           # The probe binary is packaged as pd200x-button-helper to match the app's runtime lookup path.
           cp .build/release/pd200x-button-probe "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
-          chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
-          # Ad-hoc signing keeps the app bundle internally consistent until Developer ID signing is configured.
-          codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
+          chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" \
+            "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+
+          if [[ -n "${APP_SIGN_IDENTITY:-}" ]]; then
+            # Sign each binary with the Developer ID Application certificate and
+            # the hardened runtime flag required for notarization, then sign the bundle.
+            codesign --force --options runtime --timestamp \
+              --sign "$APP_SIGN_IDENTITY" \
+              "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+            codesign --force --options runtime --timestamp \
+              --sign "$APP_SIGN_IDENTITY" \
+              "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
+            codesign --force --options runtime --timestamp \
+              --sign "$APP_SIGN_IDENTITY" \
+              "$BUILD_DIR/$APP_BUNDLE"
+          else
+            # Ad-hoc signing for builds without a Developer ID certificate.
+            codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
+          fi
 
           mkdir -p "$STAGING_DIR/Applications"
           cp -R "$BUILD_DIR/$APP_BUNDLE" "$STAGING_DIR/Applications/$APP_BUNDLE"
@@ -63,8 +107,46 @@ jobs:
             --identifier com.maulik.pd200x-button \
             --version "$PKG_VERSION" \
             --install-location / \
-            "$LATEST_PKG_PATH"
+            "$UNSIGNED_PKG_PATH"
 
+          if [[ -n "${INSTALLER_SIGN_IDENTITY:-}" ]]; then
+            # Sign the .pkg with the Developer ID Installer certificate.
+            productsign \
+              --sign "$INSTALLER_SIGN_IDENTITY" \
+              --timestamp \
+              "$UNSIGNED_PKG_PATH" \
+              "$LATEST_PKG_PATH"
+          else
+            cp "$UNSIGNED_PKG_PATH" "$LATEST_PKG_PATH"
+          fi
+
+          shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
+
+      - name: Notarize and staple installer
+        if: ${{ secrets.NOTARIZE_KEY != '' }}
+        shell: bash
+        env:
+          NOTARIZE_KEY: ${{ secrets.NOTARIZE_KEY }}
+          NOTARIZE_KEY_ID: ${{ secrets.NOTARIZE_KEY_ID }}
+          NOTARIZE_ISSUER_ID: ${{ secrets.NOTARIZE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+
+          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+          KEY_PATH="$RUNNER_TEMP/notarize-key.p8"
+
+          # The NOTARIZE_KEY secret holds the base64-encoded .p8 API key file.
+          echo "$NOTARIZE_KEY" | base64 --decode > "$KEY_PATH"
+
+          xcrun notarytool submit "$LATEST_PKG_PATH" \
+            --key "$KEY_PATH" \
+            --key-id "$NOTARIZE_KEY_ID" \
+            --issuer "$NOTARIZE_ISSUER_ID" \
+            --wait
+
+          xcrun stapler staple "$LATEST_PKG_PATH"
+
+          # Recompute the checksum after stapling modifies the package.
           shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
 
       - name: Upload installer as release asset

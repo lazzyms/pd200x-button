@@ -47,8 +47,6 @@ Download the latest macOS installer package from the GitHub releases page:
 
 - https://github.com/lazzyms/pd200x-button/releases/latest/download/pd200x-button-macos-latest.pkg
 
-The package is currently unsigned and not notarized. On first install, macOS may show a warning. If it does, Control-click (or right-click) the `.pkg`, choose **Open**, then confirm **Open** in the security dialog.
-
 Or build and install from source:
 
 Clone the repository and run the installer:
@@ -80,9 +78,27 @@ Tagged releases (`v*`) run `.github/workflows/publish-macos-installer.yml` on ma
 
 1. run `swift test` and `swift build -c release`,
 2. build `PD200X Button.app`,
-3. package it as an unsigned `.pkg`,
-4. upload `pd200x-button-macos-latest.pkg` (plus a `.sha256` checksum) as a GitHub Release asset — this powers the stable `/releases/latest/download/` URL used by the site,
-5. also commit the same artifact to `docs/downloads/pd200x-button-macos-latest.pkg` for GitHub Pages as a fallback.
+3. sign the app bundle and `.pkg` with Developer ID certificates,
+4. notarize the `.pkg` with Apple and staple the ticket,
+5. upload `pd200x-button-macos-latest.pkg` (plus a `.sha256` checksum) as a GitHub Release asset — this powers the stable `/releases/latest/download/` URL used by the site,
+6. also commit the same artifact to `docs/downloads/pd200x-button-macos-latest.pkg` for GitHub Pages as a fallback.
+
+### Signing and notarization secrets
+
+The workflow reads the following repository secrets. When they are all set, releases are signed, notarized, and stapled so macOS Gatekeeper accepts them without any warning. If any signing secret is absent the workflow falls back to ad-hoc signing and skips notarization (useful for forks and development branches).
+
+| Secret | Description |
+|---|---|
+| `MACOS_CERTIFICATE` | Base64-encoded `.p12` file that bundles the **Developer ID Application** and **Developer ID Installer** certificates exported from Keychain. Run `base64 -i cert.p12 \| tr -d '\n'` and paste the output. |
+| `MACOS_CERTIFICATE_PWD` | Export password chosen when creating the `.p12`. |
+| `KEYCHAIN_PASSWORD` | Any strong random string used as the password for the temporary CI keychain. |
+| `APP_SIGN_IDENTITY` | Exact codesign identity for the app bundle, e.g. `Developer ID Application: Your Name (XXXXXXXXXX)`. |
+| `INSTALLER_SIGN_IDENTITY` | Exact codesign identity for the installer package, e.g. `Developer ID Installer: Your Name (XXXXXXXXXX)`. |
+| `NOTARIZE_KEY` | Base64-encoded content of the App Store Connect API key (`.p8` file). Run `base64 -i AuthKey_XXXXXXXXXX.p8 \| tr -d '\n'` and paste the output. |
+| `NOTARIZE_KEY_ID` | 10-character App Store Connect API Key ID shown in the key list. |
+| `NOTARIZE_ISSUER_ID` | Issuer ID UUID shown at the top of the App Store Connect API keys page. |
+
+To create the App Store Connect API key, go to [App Store Connect → Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) and generate a key with the **Developer** role.
 
 ## Restore the original button
 

@@ -43,7 +43,7 @@ public struct KeyboardShortcut: Codable, Equatable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let repeatedParts = normalized
-            .split(whereSeparator: \Character.isWhitespace)
+            .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
         if repeatedParts.count == 2,
            repeatedParts[0] == repeatedParts[1],

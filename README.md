@@ -89,14 +89,21 @@ The workflow reads the following repository secrets. When they are all set, rele
 
 | Secret | Description |
 |---|---|
-| `MACOS_CERTIFICATE` | Base64-encoded `.p12` file that bundles the **Developer ID Application** and **Developer ID Installer** certificates exported from Keychain. Run `base64 -i cert.p12 \| tr -d '\n'` and paste the output. |
+| `MACOS_CERTIFICATE` | Base64-encoded `.p12` file that bundles the **Developer ID Application** and **Developer ID Installer** certificates exported from Keychain. |
 | `MACOS_CERTIFICATE_PWD` | Export password chosen when creating the `.p12`. |
 | `KEYCHAIN_PASSWORD` | Any strong random string used as the password for the temporary CI keychain. |
 | `APP_SIGN_IDENTITY` | Exact codesign identity for the app bundle, e.g. `Developer ID Application: Your Name (XXXXXXXXXX)`. |
 | `INSTALLER_SIGN_IDENTITY` | Exact codesign identity for the installer package, e.g. `Developer ID Installer: Your Name (XXXXXXXXXX)`. |
-| `NOTARIZE_KEY` | Base64-encoded content of the App Store Connect API key (`.p8` file). Run `base64 -i AuthKey_XXXXXXXXXX.p8 \| tr -d '\n'` and paste the output. |
+| `NOTARIZE_KEY` | Base64-encoded content of the App Store Connect API key (`.p8` file). |
 | `NOTARIZE_KEY_ID` | 10-character App Store Connect API Key ID shown in the key list. |
 | `NOTARIZE_ISSUER_ID` | Issuer ID UUID shown at the top of the App Store Connect API keys page. |
+
+Encode the certificate and API key files to base64 before storing them as secrets:
+
+```sh
+base64 -i cert.p12 | tr -d '\n'                   # → MACOS_CERTIFICATE
+base64 -i AuthKey_XXXXXXXXXX.p8 | tr -d '\n'      # → NOTARIZE_KEY
+```
 
 To create the App Store Connect API key, go to [App Store Connect → Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) and generate a key with the **Developer** role.
 

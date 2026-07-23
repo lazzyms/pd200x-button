@@ -52,33 +52,14 @@ brew install --cask --no-quarantine pd200x-button
 
 `--no-quarantine` avoids Gatekeeper blocking the unsigned app. Launch `PD200X Button` from Applications after install.
 
-Or download the latest macOS app archive from the GitHub releases page:
-
-- https://github.com/lazzyms/pd200x-button/releases/latest/download/pd200x-button-macos-latest.zip
-
-Open the zip, drag `PD200X Button.app` into Applications, then right-click the app and choose **Open** the first time you launch it.
-
-Or build and install from source:
-
-Clone the repository and run the installer:
-
-```sh
-git clone https://github.com/lazzyms/pd200x-button.git
-cd pd200x-button
-./Scripts/build-and-install.sh
-```
-
-The script runs the test suite, creates a release build, installs `PD200X Button.app` in your user Applications folder, signs it locally, and starts its login agent. If an Apple Development signing identity is available in Keychain, the installer uses it so Accessibility permission survives rebuilds. Otherwise it uses ad hoc signing and warns that permission may need to be granted again after updates. Set `PD200X_SIGNING_IDENTITY` to choose a specific identity.
-
 The menu bar title shows `Dictate` or `Meeting`. Open the menu, choose Settings, and select Handy, macOS Dictation, or Custom Shortcut. If Enter submission or keyboard shortcuts are enabled, use Request Access once and approve the macOS prompt.
 
 ## Update
 
-Pull the latest source and run the same installer again:
+Update the installed app with Homebrew:
 
 ```sh
-git pull
-./Scripts/build-and-install.sh
+brew upgrade --cask pd200x-button
 ```
 
 The selected mode and target settings are preserved.

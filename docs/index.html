@@ -323,10 +323,10 @@
                 </div>
                 <button class="copy-button" type="button" data-copy-target="install-command" aria-label="Copy Homebrew install command to clipboard">Copy</button>
               </div>
-              <pre class="command"><code id="install-command" aria-label="Homebrew install command">brew tap lazzyms/pd200x-button
+              <pre class="command"><code id="install-command" aria-label="Two-line Homebrew installation command" aria-describedby="install-command-note">brew tap lazzyms/pd200x-button
 brew install --cask --no-quarantine pd200x-button</code></pre>
               <p class="copy-status" data-copy-status aria-live="polite"></p>
-              <p class="command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
+              <p class="command-note" id="install-command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
             </section>
           </div>
 
@@ -380,6 +380,8 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
       </footer>
     </div>
     <script>
+      const copyFeedbackMs = 1500;
+
       async function copyCommand(button) {
         const target = document.getElementById(button.dataset.copyTarget);
         const status = document.querySelector("[data-copy-status]");
@@ -390,7 +392,7 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
           button.textContent = "Copy failed";
           window.setTimeout(() => {
             button.textContent = "Copy";
-          }, 1500);
+          }, copyFeedbackMs);
           return;
         }
 
@@ -415,7 +417,7 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
           button.textContent = "Copied";
           window.setTimeout(() => {
             button.textContent = previousLabel;
-          }, 1500);
+          }, copyFeedbackMs);
           return;
         }
 
@@ -425,7 +427,7 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
         button.textContent = "Copy failed";
         window.setTimeout(() => {
           button.textContent = "Copy";
-        }, 1500);
+        }, copyFeedbackMs);
       }
 
       document.querySelectorAll("[data-copy-target]").forEach((button) => {

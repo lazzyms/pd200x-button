@@ -47,7 +47,7 @@ Download the latest macOS installer package from GitHub Pages:
 
 - https://lazzyms.github.io/pd200x-button/downloads/pd200x-button-macos-latest.pkg
 
-The package is currently unsigned and not notarized. On first install, macOS may show a warning and require opening the package from the context menu.
+The package is currently unsigned and not notarized. On first install, macOS may show a warning. If it does, Control-click (or right-click) the `.pkg`, choose **Open**, then confirm **Open** in the security dialog.
 
 Or build and install from source:
 

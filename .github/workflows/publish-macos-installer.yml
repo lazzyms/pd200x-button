@@ -38,8 +38,10 @@ jobs:
           cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
           cp Packaging/pd200x-button-owned "$BUILD_DIR/$APP_BUNDLE/Contents/Resources/pd200x-button-owned"
           cp .build/release/PD200XButtonMenu "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
+          # The probe binary is packaged as pd200x-button-helper to match the app's runtime lookup path.
           cp .build/release/pd200x-button-probe "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
           chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+          # Ad-hoc signing keeps the app bundle internally consistent until Developer ID signing is configured.
           codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
 
           mkdir -p "$STAGING_DIR/Applications"

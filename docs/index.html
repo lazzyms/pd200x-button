@@ -108,6 +108,64 @@
         margin-top: 34px;
       }
 
+      .install-card {
+        margin-top: 22px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 12px 34px rgba(24, 46, 86, 0.07);
+        backdrop-filter: blur(18px);
+      }
+
+      .install-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .install-title {
+        margin: 6px 0 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+
+      .command {
+        margin: 0;
+        padding: 16px 18px;
+        overflow-x: auto;
+        color: white;
+        border-radius: 16px;
+        background: #172033;
+        font: 0.95rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .copy-button {
+        min-height: 42px;
+        padding: 0 16px;
+        color: var(--blue-dark);
+        border: 1px solid rgba(23, 105, 255, 0.18);
+        border-radius: 12px;
+        background: white;
+        font: inherit;
+        font-weight: 680;
+        cursor: pointer;
+      }
+
+      .command-note {
+        margin: 14px 0 0;
+        color: var(--muted);
+      }
+
+      .copy-status {
+        min-height: 1.5em;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
       .button {
         display: inline-flex;
         align-items: center;
@@ -254,10 +312,22 @@
             <h1>One mic button. Your dictation workflow.</h1>
             <p class="lead">Start with one press. Stop and submit with the next. Switch to Meeting mode whenever you want the original mute button back.</p>
             <div class="actions">
-              <a class="button primary" href="https://github.com/lazzyms/pd200x-button/releases/latest/download/pd200x-button-macos-latest.pkg">Download for macOS</a>
-              <a class="button" href="https://github.com/lazzyms/pd200x-button#install">Install from source</a>
+              <a class="button primary" href="#install">Install with Homebrew</a>
               <a class="button" href="https://github.com/lazzyms/pd200x-button#restore-the-original-button">Read the rollback steps</a>
             </div>
+            <section class="install-card" id="install" aria-label="Homebrew install command">
+              <div class="install-header">
+                <div>
+                  <div class="eyebrow">Install</div>
+                  <p class="install-title">Copy the Homebrew command</p>
+                </div>
+                <button class="copy-button" type="button" data-copy-target="install-command" aria-label="Copy Homebrew install command to clipboard">Copy</button>
+              </div>
+              <pre class="command"><code id="install-command" aria-label="Two-line Homebrew installation command" aria-describedby="install-command-note">brew tap lazzyms/pd200x-button
+brew install --cask --no-quarantine pd200x-button</code></pre>
+              <p class="copy-status" data-copy-status aria-live="polite"></p>
+              <p class="command-note" id="install-command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
+            </section>
           </div>
 
           <div class="menu-demo" aria-label="Illustration of the menu bar app">
@@ -309,5 +379,62 @@
         <a href="https://github.com/lazzyms/pd200x-button">GitHub repository</a>
       </footer>
     </div>
+    <script>
+      const copyFeedbackMs = 1500;
+
+      async function copyCommand(button) {
+        const target = document.getElementById(button.dataset.copyTarget);
+        const status = document.querySelector("[data-copy-status]");
+        if (!target) {
+          if (status) {
+            status.textContent = "Copy is unavailable due to a page error.";
+          }
+          button.textContent = "Copy failed";
+          window.setTimeout(() => {
+            button.textContent = "Copy";
+          }, copyFeedbackMs);
+          return;
+        }
+
+        const command = target.textContent;
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(command);
+          copied = true;
+        } catch {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+
+        if (copied) {
+          if (status) {
+            status.textContent = "Command copied to your clipboard.";
+          }
+          const previousLabel = button.textContent;
+          button.textContent = "Copied";
+          window.setTimeout(() => {
+            button.textContent = previousLabel;
+          }, copyFeedbackMs);
+          return;
+        }
+
+        if (status) {
+          status.textContent = "Clipboard copy is unavailable here. The command is selected so you can copy it manually.";
+        }
+        button.textContent = "Copy failed";
+        window.setTimeout(() => {
+          button.textContent = "Copy";
+        }, copyFeedbackMs);
+      }
+
+      document.querySelectorAll("[data-copy-target]").forEach((button) => {
+        button.addEventListener("click", () => {
+          copyCommand(button);
+        });
+      });
+    </script>
   </body>
 </html>

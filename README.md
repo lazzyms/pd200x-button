@@ -43,33 +43,23 @@ The Human Interface Device packets are deliberately allow-listed for this exact 
 
 ## Install
 
-Download the latest macOS installer package from the GitHub releases page:
-
-- https://github.com/lazzyms/pd200x-button/releases/latest/download/pd200x-button-macos-latest.pkg
-
-The package is currently unsigned and not notarized. On first install, macOS may show a warning. If it does, Control-click (or right-click) the `.pkg`, choose **Open**, then confirm **Open** in the security dialog.
-
-Or build and install from source:
-
-Clone the repository and run the installer:
+Install with Homebrew:
 
 ```sh
-git clone https://github.com/lazzyms/pd200x-button.git
-cd pd200x-button
-./Scripts/build-and-install.sh
+brew tap lazzyms/pd200x-button
+brew install --cask --no-quarantine pd200x-button
 ```
 
-The script runs the test suite, creates a release build, installs `PD200X Button.app` in your user Applications folder, signs it locally, and starts its login agent. If an Apple Development signing identity is available in Keychain, the installer uses it so Accessibility permission survives rebuilds. Otherwise it uses ad hoc signing and warns that permission may need to be granted again after updates. Set `PD200X_SIGNING_IDENTITY` to choose a specific identity.
+`--no-quarantine` avoids Gatekeeper blocking the unsigned app. Launch `PD200X Button` from Applications after install.
 
 The menu bar title shows `Dictate` or `Meeting`. Open the menu, choose Settings, and select Handy, macOS Dictation, or Custom Shortcut. If Enter submission or keyboard shortcuts are enabled, use Request Access once and approve the macOS prompt.
 
 ## Update
 
-Pull the latest source and run the same installer again:
+Update the installed app with Homebrew:
 
 ```sh
-git pull
-./Scripts/build-and-install.sh
+brew upgrade --cask pd200x-button
 ```
 
 The selected mode and target settings are preserved.
@@ -80,9 +70,10 @@ Tagged releases (`v*`) run `.github/workflows/publish-macos-installer.yml` on ma
 
 1. run `swift test` and `swift build -c release`,
 2. build `PD200X Button.app`,
-3. package it as an unsigned `.pkg`,
-4. upload `pd200x-button-macos-latest.pkg` (plus a `.sha256` checksum) as a GitHub Release asset — this powers the stable `/releases/latest/download/` URL used by the site,
-5. also commit the same artifact to `docs/downloads/pd200x-button-macos-latest.pkg` for GitHub Pages as a fallback.
+3. ad-hoc sign the app bundle so the extracted `.app` stays internally consistent on Apple Silicon,
+4. archive it as `pd200x-button-macos-latest.zip` (plus a `.sha256` checksum),
+5. upload that zip as the stable GitHub Release asset used by both the site and the Homebrew cask,
+6. also commit the same artifact to `docs/downloads/pd200x-button-macos-latest.zip` for GitHub Pages as a fallback.
 
 ## Restore the original button
 

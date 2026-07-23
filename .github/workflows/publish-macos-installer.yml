@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build app and package installer
+      - name: Build app and archive zip
         shell: bash
         run: |
           set -euo pipefail
@@ -29,21 +29,11 @@ jobs:
           swift test
           swift build -c release
 
-          # Compute a pkgbuild-compatible version string.
-          # For tag pushes use the semver portion (e.g. v0.1.0 → 0.1.0).
-          # For branch/manual runs use a safe dotted-numeric dev version.
-          if [[ "$GITHUB_REF" == "refs/tags/"* ]]; then
-            PKG_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            PKG_VERSION="0.0.${GITHUB_RUN_NUMBER:-0}"
-          fi
-
           APP_BUNDLE="PD200X Button.app"
-          STAGING_DIR="$RUNNER_TEMP/staging"
           BUILD_DIR="$RUNNER_TEMP/build"
-          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+          LATEST_ZIP_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
 
-          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$LATEST_PKG_PATH"
+          rm -rf "$BUILD_DIR" "$LATEST_ZIP_PATH" "$LATEST_ZIP_PATH.sha256"
           mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
 
           cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
@@ -51,21 +41,15 @@ jobs:
           cp .build/release/PD200XButtonMenu "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
           # The probe binary is packaged as pd200x-button-helper to match the app's runtime lookup path.
           cp .build/release/pd200x-button-probe "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
-          chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
-          # Ad-hoc signing keeps the app bundle internally consistent until Developer ID signing is configured.
+          chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" \
+            "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
           codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
 
-          mkdir -p "$STAGING_DIR/Applications"
-          cp -R "$BUILD_DIR/$APP_BUNDLE" "$STAGING_DIR/Applications/$APP_BUNDLE"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$BUILD_DIR/$APP_BUNDLE" \
+            "$LATEST_ZIP_PATH"
 
-          pkgbuild \
-            --root "$STAGING_DIR" \
-            --identifier com.maulik.pd200x-button \
-            --version "$PKG_VERSION" \
-            --install-location / \
-            "$LATEST_PKG_PATH"
-
-          shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
+          shasum -a 256 "$LATEST_ZIP_PATH" > "$LATEST_ZIP_PATH.sha256"
 
       - name: Upload installer as release asset
         if: startsWith(github.ref, 'refs/tags/')
@@ -75,12 +59,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+          LATEST_ZIP_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
 
           # Upload the stable-named asset so the /releases/latest/download/ URL is always current.
           gh release upload "${GITHUB_REF_NAME}" \
-            "$LATEST_PKG_PATH" \
-            "$LATEST_PKG_PATH.sha256" \
+            "$LATEST_ZIP_PATH" \
+            "$LATEST_ZIP_PATH.sha256" \
             --clobber
 
       - name: Check out default branch for Pages content
@@ -94,19 +78,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          PKG_SOURCE="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
-          SHA_SOURCE="$PKG_SOURCE.sha256"
+          ZIP_SOURCE="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
+          SHA_SOURCE="$ZIP_SOURCE.sha256"
           TARGET_DIR="site/docs/downloads"
-          TARGET_PKG="$TARGET_DIR/pd200x-button-macos-latest.pkg"
-          TARGET_SHA="$TARGET_DIR/pd200x-button-macos-latest.pkg.sha256"
+          TARGET_ZIP="$TARGET_DIR/pd200x-button-macos-latest.zip"
+          TARGET_SHA="$TARGET_DIR/pd200x-button-macos-latest.zip.sha256"
 
           mkdir -p "$TARGET_DIR"
-          cp "$PKG_SOURCE" "$TARGET_PKG"
+          cp "$ZIP_SOURCE" "$TARGET_ZIP"
           cp "$SHA_SOURCE" "$TARGET_SHA"
 
           cd site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/downloads/pd200x-button-macos-latest.pkg docs/downloads/pd200x-button-macos-latest.pkg.sha256
-          git commit -m "chore: publish macOS installer for ${GITHUB_REF_NAME}" || exit 0
+          git add docs/downloads/pd200x-button-macos-latest.zip docs/downloads/pd200x-button-macos-latest.zip.sha256
+          git commit -m "chore: publish macOS app archive for ${GITHUB_REF_NAME}" || exit 0
           git push

@@ -315,7 +315,7 @@
               <a class="button primary" href="#install">Install with Homebrew</a>
               <a class="button" href="https://github.com/lazzyms/pd200x-button#restore-the-original-button">Read the rollback steps</a>
             </div>
-            <section class="install-card" id="install" aria-label="Homebrew install command">
+            <section class="install-card" id="install" aria-label="Homebrew install command" data-install-command="brew tap lazzyms/pd200x-button&#10;brew install --cask --no-quarantine pd200x-button">
               <div class="install-header">
                 <div>
                   <div class="eyebrow">Install</div>
@@ -323,8 +323,7 @@
                 </div>
                 <button class="copy-button" type="button" data-copy-target="install-command" aria-label="Copy Homebrew install command to clipboard">Copy</button>
               </div>
-              <pre class="command"><code id="install-command">brew tap lazzyms/pd200x-button
-brew install --cask --no-quarantine pd200x-button</code></pre>
+              <pre class="command"><code id="install-command"></code></pre>
               <p class="copy-status" data-copy-status aria-live="polite"></p>
               <p class="command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
             </section>
@@ -393,17 +392,16 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
           await navigator.clipboard.writeText(command);
           copied = true;
         } catch {
-          const input = document.createElement("textarea");
-          input.value = command;
-          document.body.appendChild(input);
-          input.select();
-          copied = document.execCommand("copy");
-          input.remove();
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
         }
 
         if (!copied) {
           if (status) {
-            status.textContent = "Clipboard copy is unavailable here. Select the command and copy it manually.";
+            status.textContent = "Clipboard copy is unavailable here. The command is selected so you can copy it manually.";
           }
           button.textContent = "Copy failed";
           window.setTimeout(() => {
@@ -420,6 +418,13 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
         window.setTimeout(() => {
           button.textContent = previousLabel;
         }, 1500);
+      }
+
+      const installCard = document.getElementById("install");
+      const installCommand = installCard?.dataset.installCommand ?? "";
+      const installCommandTarget = document.getElementById("install-command");
+      if (installCommandTarget) {
+        installCommandTarget.textContent = installCommand;
       }
 
       document.querySelectorAll("[data-copy-target]").forEach((button) => {

@@ -315,7 +315,7 @@
               <a class="button primary" href="#install">Install with Homebrew</a>
               <a class="button" href="https://github.com/lazzyms/pd200x-button#restore-the-original-button">Read the rollback steps</a>
             </div>
-            <section class="install-card" id="install" aria-label="Homebrew install command" data-install-command="brew tap lazzyms/pd200x-button&#10;brew install --cask --no-quarantine pd200x-button">
+            <section class="install-card" id="install" aria-label="Homebrew install command">
               <div class="install-header">
                 <div>
                   <div class="eyebrow">Install</div>
@@ -420,9 +420,11 @@
         }, 1500);
       }
 
-      const installCard = document.getElementById("install");
-      const installCommand = installCard?.dataset.installCommand ?? "";
       const installCommandTarget = document.getElementById("install-command");
+      const installCommand = [
+        "brew tap lazzyms/pd200x-button",
+        "brew install --cask --no-quarantine pd200x-button",
+      ].join("\n");
       if (installCommandTarget) {
         installCommandTarget.textContent = installCommand;
       }

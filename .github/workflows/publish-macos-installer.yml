@@ -1,0 +1,83 @@
+name: Publish macOS installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish-installer:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build app and package installer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          swift test
+          swift build -c release
+
+          APP_BUNDLE="PD200X Button.app"
+          STAGING_DIR="$RUNNER_TEMP/staging"
+          BUILD_DIR="$RUNNER_TEMP/build"
+          PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-${GITHUB_REF_NAME}.pkg"
+
+          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$PKG_PATH"
+          mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
+
+          cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
+          cp Packaging/pd200x-button-owned "$BUILD_DIR/$APP_BUNDLE/Contents/Resources/pd200x-button-owned"
+          cp .build/release/PD200XButtonMenu "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
+          cp .build/release/pd200x-button-probe "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+          chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+          codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
+
+          mkdir -p "$STAGING_DIR/Applications"
+          cp -R "$BUILD_DIR/$APP_BUNDLE" "$STAGING_DIR/Applications/$APP_BUNDLE"
+
+          pkgbuild \
+            --root "$STAGING_DIR" \
+            --identifier com.maulik.pd200x-button \
+            --version "${GITHUB_REF_NAME#v}" \
+            --install-location / \
+            "$PKG_PATH"
+
+          shasum -a 256 "$PKG_PATH" > "$PKG_PATH.sha256"
+
+      - name: Check out default branch for Pages content
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: site
+
+      - name: Publish installer to docs/downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PKG_SOURCE="$RUNNER_TEMP/pd200x-button-macos-${GITHUB_REF_NAME}.pkg"
+          SHA_SOURCE="$PKG_SOURCE.sha256"
+          TARGET_DIR="site/docs/downloads"
+          TARGET_PKG="$TARGET_DIR/pd200x-button-macos-latest.pkg"
+          TARGET_SHA="$TARGET_DIR/pd200x-button-macos-latest.pkg.sha256"
+
+          mkdir -p "$TARGET_DIR"
+          cp "$PKG_SOURCE" "$TARGET_PKG"
+          cp "$SHA_SOURCE" "$TARGET_SHA"
+
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/downloads/pd200x-button-macos-latest.pkg docs/downloads/pd200x-button-macos-latest.pkg.sha256
+          git commit -m "chore: publish macOS installer for ${GITHUB_REF_NAME}" || exit 0
+          git push

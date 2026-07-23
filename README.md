@@ -43,6 +43,14 @@ The Human Interface Device packets are deliberately allow-listed for this exact 
 
 ## Install
 
+Download the latest macOS installer package from GitHub Pages:
+
+- https://lazzyms.github.io/pd200x-button/downloads/pd200x-button-macos-latest.pkg
+
+The package is currently unsigned and not notarized. On first install, macOS may show a warning and require opening the package from the context menu.
+
+Or build and install from source:
+
 Clone the repository and run the installer:
 
 ```sh
@@ -65,6 +73,15 @@ git pull
 ```
 
 The selected mode and target settings are preserved.
+
+## Release packaging and publishing
+
+Tagged releases (`v*`) run `.github/workflows/publish-macos-installer.yml` on macOS to:
+
+1. run `swift test` and `swift build -c release`,
+2. build `PD200X Button.app`,
+3. package it as an unsigned `.pkg`,
+4. publish the stable download artifact to `docs/downloads/pd200x-button-macos-latest.pkg` (plus a `.sha256` checksum) for GitHub Pages.
 
 ## Restore the original button
 

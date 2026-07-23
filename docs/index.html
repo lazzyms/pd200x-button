@@ -159,6 +159,13 @@
         color: var(--muted);
       }
 
+      .copy-status {
+        min-height: 1.5em;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
       .button {
         display: inline-flex;
         align-items: center;
@@ -318,6 +325,7 @@
               </div>
               <pre class="command"><code id="install-command">brew tap lazzyms/pd200x-button
 brew install --cask --no-quarantine pd200x-button</code></pre>
+              <p class="copy-status" data-copy-status aria-live="polite"></p>
               <p class="command-note"><code>--no-quarantine</code> avoids Gatekeeper blocking the unsigned app. Launch <code>PD200X Button</code> from Applications after install.</p>
             </section>
           </div>
@@ -378,18 +386,35 @@ brew install --cask --no-quarantine pd200x-button</code></pre>
           return;
         }
 
-        const command = target.textContent ?? "";
+        const command = target.textContent;
+        const status = document.querySelector("[data-copy-status]");
+        let copied = false;
         try {
           await navigator.clipboard.writeText(command);
+          copied = true;
         } catch {
           const input = document.createElement("textarea");
           input.value = command;
           document.body.appendChild(input);
           input.select();
-          document.execCommand("copy");
+          copied = document.execCommand("copy");
           input.remove();
         }
 
+        if (!copied) {
+          if (status) {
+            status.textContent = "Clipboard copy is unavailable here. Select the command and copy it manually.";
+          }
+          button.textContent = "Copy failed";
+          window.setTimeout(() => {
+            button.textContent = "Copy";
+          }, 1500);
+          return;
+        }
+
+        if (status) {
+          status.textContent = "Command copied to your clipboard.";
+        }
         const previousLabel = button.textContent;
         button.textContent = "Copied";
         window.setTimeout(() => {

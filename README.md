@@ -46,11 +46,11 @@ The Human Interface Device packets are deliberately allow-listed for this exact 
 Install with Homebrew:
 
 ```sh
-brew tap lazzyms/pd200x-button
-brew install --cask --no-quarantine pd200x-button
+brew tap lazzyms/pd200x-button https://github.com/lazzyms/pd200x-button
+brew install --cask lazzyms/pd200x-button/pd200x-button
 ```
 
-`--no-quarantine` avoids Gatekeeper blocking the unsigned app. Launch `PD200X Button` from Applications after install.
+Launch `PD200X Button` from Applications after install. If macOS warns that the app is from an unidentified developer, use right-click -> Open the first time.
 
 The menu bar title shows `Dictate` or `Meeting`. Open the menu, choose Settings, and select Handy, macOS Dictation, or Custom Shortcut. If Enter submission or keyboard shortcuts are enabled, use Request Access once and approve the macOS prompt.
 
@@ -59,7 +59,7 @@ The menu bar title shows `Dictate` or `Meeting`. Open the menu, choose Settings,
 Update the installed app with Homebrew:
 
 ```sh
-brew upgrade --cask pd200x-button
+brew upgrade --cask lazzyms/pd200x-button/pd200x-button
 ```
 
 The selected mode and target settings are preserved.

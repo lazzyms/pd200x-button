@@ -31,6 +31,7 @@ jobs:
           STAGING_DIR="$RUNNER_TEMP/staging"
           BUILD_DIR="$RUNNER_TEMP/build"
           PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-${GITHUB_REF_NAME}.pkg"
+          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
 
           rm -rf "$STAGING_DIR" "$BUILD_DIR" "$PKG_PATH"
           mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
@@ -54,7 +55,26 @@ jobs:
             --install-location / \
             "$PKG_PATH"
 
+          # Copy with a stable "latest" filename for use as the release asset.
+          cp "$PKG_PATH" "$LATEST_PKG_PATH"
           shasum -a 256 "$PKG_PATH" > "$PKG_PATH.sha256"
+          shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
+
+      - name: Upload installer as release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+
+          # Upload the stable-named asset so the /releases/latest/download/ URL is always current.
+          gh release upload "${GITHUB_REF_NAME}" \
+            "$LATEST_PKG_PATH" \
+            "$LATEST_PKG_PATH.sha256" \
+            --clobber
 
       - name: Check out default branch for Pages content
         uses: actions/checkout@v4

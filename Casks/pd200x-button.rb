@@ -12,7 +12,8 @@ cask "pd200x-button" do
   app "PD200X Button.app"
 
   caveats <<~EOS
-    Install with:
-      brew install --cask --no-quarantine pd200x-button
+    Launch PD200X Button from Applications after install.
+    If you omit --no-quarantine during installation, use right-click -> Open
+    the first time you launch the app.
   EOS
 end

@@ -92,5 +92,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/downloads/pd200x-button-macos-latest.zip docs/downloads/pd200x-button-macos-latest.zip.sha256
-          git commit -m "chore: publish macOS installer for ${GITHUB_REF_NAME}" || exit 0
+          git commit -m "chore: publish macOS app archive for ${GITHUB_REF_NAME}" || exit 0
           git push

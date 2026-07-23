@@ -21,57 +21,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Import Developer ID certificates
-        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+      - name: Build app and archive zip
         shell: bash
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          set -euo pipefail
-
-          CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
-
-          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_PATH"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
-            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: \
-            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-      - name: Build app and package installer
-        shell: bash
-        env:
-          APP_SIGN_IDENTITY: ${{ secrets.APP_SIGN_IDENTITY }}
-          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
         run: |
           set -euo pipefail
 
           swift test
           swift build -c release
 
-          # Compute a pkgbuild-compatible version string.
-          # For tag pushes use the semver portion (e.g. v0.1.0 → 0.1.0).
-          # For branch/manual runs use a safe dotted-numeric dev version.
-          if [[ "$GITHUB_REF" == "refs/tags/"* ]]; then
-            PKG_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            PKG_VERSION="0.0.${GITHUB_RUN_NUMBER:-0}"
-          fi
-
           APP_BUNDLE="PD200X Button.app"
-          STAGING_DIR="$RUNNER_TEMP/staging"
           BUILD_DIR="$RUNNER_TEMP/build"
-          UNSIGNED_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest-unsigned.pkg"
-          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+          LATEST_ZIP_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
 
-          rm -rf "$STAGING_DIR" "$BUILD_DIR" "$UNSIGNED_PKG_PATH" "$LATEST_PKG_PATH"
+          rm -rf "$BUILD_DIR" "$LATEST_ZIP_PATH" "$LATEST_ZIP_PATH.sha256"
           mkdir -p "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS" "$BUILD_DIR/$APP_BUNDLE/Contents/Resources"
 
           cp Packaging/Info.plist "$BUILD_DIR/$APP_BUNDLE/Contents/Info.plist"
@@ -81,73 +43,13 @@ jobs:
           cp .build/release/pd200x-button-probe "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
           chmod 755 "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu" \
             "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
+          codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
 
-          if [[ -n "${APP_SIGN_IDENTITY:-}" ]]; then
-            # Sign each binary with the Developer ID Application certificate and
-            # the hardened runtime flag required for notarization, then sign the bundle.
-            codesign --force --options runtime --timestamp \
-              --sign "$APP_SIGN_IDENTITY" \
-              "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/pd200x-button-helper"
-            codesign --force --options runtime --timestamp \
-              --sign "$APP_SIGN_IDENTITY" \
-              "$BUILD_DIR/$APP_BUNDLE/Contents/MacOS/PD200XButtonMenu"
-            codesign --force --options runtime --timestamp \
-              --sign "$APP_SIGN_IDENTITY" \
-              "$BUILD_DIR/$APP_BUNDLE"
-          else
-            # Ad-hoc signing for builds without a Developer ID certificate.
-            codesign --force --deep --timestamp=none --sign - "$BUILD_DIR/$APP_BUNDLE"
-          fi
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$BUILD_DIR/$APP_BUNDLE" \
+            "$LATEST_ZIP_PATH"
 
-          mkdir -p "$STAGING_DIR/Applications"
-          cp -R "$BUILD_DIR/$APP_BUNDLE" "$STAGING_DIR/Applications/$APP_BUNDLE"
-
-          pkgbuild \
-            --root "$STAGING_DIR" \
-            --identifier com.maulik.pd200x-button \
-            --version "$PKG_VERSION" \
-            --install-location / \
-            "$UNSIGNED_PKG_PATH"
-
-          if [[ -n "${INSTALLER_SIGN_IDENTITY:-}" ]]; then
-            # Sign the .pkg with the Developer ID Installer certificate.
-            productsign \
-              --sign "$INSTALLER_SIGN_IDENTITY" \
-              --timestamp \
-              "$UNSIGNED_PKG_PATH" \
-              "$LATEST_PKG_PATH"
-          else
-            cp "$UNSIGNED_PKG_PATH" "$LATEST_PKG_PATH"
-          fi
-
-          shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
-
-      - name: Notarize and staple installer
-        if: ${{ secrets.NOTARIZE_KEY != '' }}
-        shell: bash
-        env:
-          NOTARIZE_KEY: ${{ secrets.NOTARIZE_KEY }}
-          NOTARIZE_KEY_ID: ${{ secrets.NOTARIZE_KEY_ID }}
-          NOTARIZE_ISSUER_ID: ${{ secrets.NOTARIZE_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-
-          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
-          KEY_PATH="$RUNNER_TEMP/notarize-key.p8"
-
-          # The NOTARIZE_KEY secret holds the base64-encoded .p8 API key file.
-          echo "$NOTARIZE_KEY" | base64 --decode > "$KEY_PATH"
-
-          xcrun notarytool submit "$LATEST_PKG_PATH" \
-            --key "$KEY_PATH" \
-            --key-id "$NOTARIZE_KEY_ID" \
-            --issuer "$NOTARIZE_ISSUER_ID" \
-            --wait
-
-          xcrun stapler staple "$LATEST_PKG_PATH"
-
-          # Recompute the checksum after stapling modifies the package.
-          shasum -a 256 "$LATEST_PKG_PATH" > "$LATEST_PKG_PATH.sha256"
+          shasum -a 256 "$LATEST_ZIP_PATH" > "$LATEST_ZIP_PATH.sha256"
 
       - name: Upload installer as release asset
         if: startsWith(github.ref, 'refs/tags/')
@@ -157,12 +59,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          LATEST_PKG_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
+          LATEST_ZIP_PATH="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
 
           # Upload the stable-named asset so the /releases/latest/download/ URL is always current.
           gh release upload "${GITHUB_REF_NAME}" \
-            "$LATEST_PKG_PATH" \
-            "$LATEST_PKG_PATH.sha256" \
+            "$LATEST_ZIP_PATH" \
+            "$LATEST_ZIP_PATH.sha256" \
             --clobber
 
       - name: Check out default branch for Pages content
@@ -176,19 +78,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          PKG_SOURCE="$RUNNER_TEMP/pd200x-button-macos-latest.pkg"
-          SHA_SOURCE="$PKG_SOURCE.sha256"
+          ZIP_SOURCE="$RUNNER_TEMP/pd200x-button-macos-latest.zip"
+          SHA_SOURCE="$ZIP_SOURCE.sha256"
           TARGET_DIR="site/docs/downloads"
-          TARGET_PKG="$TARGET_DIR/pd200x-button-macos-latest.pkg"
-          TARGET_SHA="$TARGET_DIR/pd200x-button-macos-latest.pkg.sha256"
+          TARGET_ZIP="$TARGET_DIR/pd200x-button-macos-latest.zip"
+          TARGET_SHA="$TARGET_DIR/pd200x-button-macos-latest.zip.sha256"
 
           mkdir -p "$TARGET_DIR"
-          cp "$PKG_SOURCE" "$TARGET_PKG"
+          cp "$ZIP_SOURCE" "$TARGET_ZIP"
           cp "$SHA_SOURCE" "$TARGET_SHA"
 
           cd site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/downloads/pd200x-button-macos-latest.pkg docs/downloads/pd200x-button-macos-latest.pkg.sha256
+          git add docs/downloads/pd200x-button-macos-latest.zip docs/downloads/pd200x-button-macos-latest.zip.sha256
           git commit -m "chore: publish macOS installer for ${GITHUB_REF_NAME}" || exit 0
           git push

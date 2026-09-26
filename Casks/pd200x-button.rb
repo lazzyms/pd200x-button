@@ -13,7 +13,7 @@ cask "pd200x-button" do
 
   caveats <<~EOS
     Launch PD200X Button from Applications after install.
-    If you omit --no-quarantine during installation, use right-click -> Open
-    the first time you launch the app.
+    If macOS warns that the app is from an unidentified developer, use
+    right-click -> Open the first time you launch it.
   EOS
 end
